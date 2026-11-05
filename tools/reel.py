@@ -168,8 +168,11 @@ def main(spec):
     if "scenes" in S:
         BGD = f"{ROOT}/bg"
         cuts = []  # (clip, dur)
+        # optional scene_map: segment index -> scene index (lets one shot span several text segments)
+        smap = S.get("scene_map", list(range(len(segs))))
         for i, clips in enumerate(S["scenes"]):
-            a, b = bounds[i], bounds[i + 1]
+            idx = [k for k, m in enumerate(smap) if m == i]
+            a, b = bounds[idx[0]], bounds[idx[-1] + 1]
             n = len(clips)
             for j, c in enumerate(clips):
                 cuts.append((f"{BGD}/{c}.mp4", (b - a) / n))
