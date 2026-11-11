@@ -69,9 +69,6 @@ def build(spec):
             if spec.get("first_comment"):
                 o["first_comment"] = spec["first_comment"]
             targets.append({"channel_id": 1, "format": "reel", "options": o})
-            if spec.get("fb_story", True):  # Ahmed wants FB reel + FB story (API v1.1)
-                targets.append({"channel_id": 1, "format": "story",
-                                "options": {"is_ai_generated": False}})
         elif p == "instagram":
             o = {"share_to_feed": True}
             if spec.get("first_comment"):
@@ -112,6 +109,15 @@ if __name__ == "__main__":
     elif cmd == "post":
         specs = json.load(open(sys.argv[2]))
         for s in specs if isinstance(specs, list) else [specs]:
-            print(summary(call("POST", "/posts", build(s))))
+            body = build(s)
+            print(summary(call("POST", "/posts", body)))
+            # FB story must be its OWN post: the API keeps only one target per
+            # channel, so reel+story in one post silently drops the reel.
+            if s.get("fb_story", True) and "facebook" in s.get("platforms", ["facebook"]):
+                sb = {k: v for k, v in body.items() if k != "targets"}
+                sb["caption"] = ""
+                sb["targets"] = [{"channel_id": 1, "format": "story",
+                                  "options": {"is_ai_generated": False}}]
+                print("  story:", summary(call("POST", "/posts", sb)))
     else:
         sys.exit(__doc__)
