@@ -69,6 +69,9 @@ def build(spec):
             if spec.get("first_comment"):
                 o["first_comment"] = spec["first_comment"]
             targets.append({"channel_id": 1, "format": "reel", "options": o})
+            if spec.get("fb_story", True):  # Ahmed wants FB reel + FB story (API v1.1)
+                targets.append({"channel_id": 1, "format": "story",
+                                "options": {"is_ai_generated": False}})
         elif p == "instagram":
             o = {"share_to_feed": True}
             if spec.get("first_comment"):

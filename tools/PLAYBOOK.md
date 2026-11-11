@@ -1,7 +1,7 @@
 # آية لمست قلبي — دليل الإنتاج الأسبوعي
 
 ## القنوات والجدولة (من 9 نوفمبر 2026)
-- **فيسبوك وانستجرام ويوتيوب بيتجدولوا على منصة أحمد MSM** (`https://msm.amrbdr.com/api/v1`) بالسكريبت `tools/msm_post.py`. المفتاح في `~/.msm_token` أو `MSM_TOKEN`، وممنوع يتكتب في الـ repo (الـ repo ده public). القنوات: facebook=1 (REEL)، instagram=2 (REEL)، youtube=3 (short). الـ spec: video_url, caption, at_cairo, yt_title, yt_tags, fb_title, first_comment.
+- **فيسبوك وانستجرام ويوتيوب بيتجدولوا على منصة أحمد MSM** (`https://msm.amrbdr.com/api/v1`) بالسكريبت `tools/msm_post.py`. المفتاح في `~/.msm_token` أو `MSM_TOKEN`، وممنوع يتكتب في الـ repo (الـ repo ده public). القنوات: facebook=1 (REEL + STORY، طلبين منفصلين في نفس البوست)، instagram=2 (REEL)، youtube=3 (short). مرجع الـ API: https://msm.amrbdr.com/api-docs (v1.1). ريل فيسبوك لازم 3–90 ثانية، والاستوري 3–60 ثانية. الـ spec: video_url, caption, at_cairo, yt_title, yt_tags, fb_title, first_comment.
 - **تيك توك بس لسه على Metricool** (brand `7777961`، provider tiktok لوحده) لحد ما الحساب الصح يتربط في MSM. قناة tiktok=4 في MSM حالياً حساب غلط اسمه «Amr Bdreldin»، ممنوع تنشر عليها. اعرف إمتى يتغير: لو `python3 tools/msm_post.py channels` بقى بيطلع حساب تيك توك باسم «آية لمست قلبي» أو ayah205025، اسأل أحمد قبل ما تنقل تيك توك.
 - الأوقات بتوقيت القاهرة. MSM بياخد UTC (القاهرة = UTC+2 في الشتا)، والسكريبت بيحوّل لوحده.
 - Metricool (للتيك توك والتحليلات): YouTube `UCyzkyFNz_qya7Rmrr25XK_g`، TikTok `ayah205025`، Instagram `ayah.205025`، Facebook page `1029069070295183`. الخطة المجانية لحد دلوقتي ما وقفتش أي نشر، وبما إن تيك توك بس اللي باقي عليها فالحد مش مشكلة.
