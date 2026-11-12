@@ -56,7 +56,7 @@ def call(method, path, body=None):
 
 
 def build(spec):
-    plats = spec.get("platforms", ["youtube", "facebook", "instagram"])
+    plats = spec.get("platforms", ["youtube"])  # 12 Nov: only YouTube on MSM; FB/IG/TikTok on Metricool
     targets = []
     for p in plats:
         if p == "youtube":
@@ -113,7 +113,7 @@ if __name__ == "__main__":
             print(summary(call("POST", "/posts", body)))
             # FB story must be its OWN post: the API keeps only one target per
             # channel, so reel+story in one post silently drops the reel.
-            if s.get("fb_story", True) and "facebook" in s.get("platforms", ["facebook"]):
+            if s.get("fb_story", False) and "facebook" in s.get("platforms", []):
                 sb = {k: v for k, v in body.items() if k != "targets"}
                 sb["caption"] = ""
                 sb["targets"] = [{"channel_id": 1, "format": "story",
