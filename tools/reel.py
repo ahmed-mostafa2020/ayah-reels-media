@@ -144,6 +144,8 @@ def main(spec):
         near = [x for x in sil if abs(x - b) < 1.5 and x > bounds[-1] + 0.8]
         bounds.append(min(near, key=lambda x: abs(x - b)) if near else b)
     bounds.append(T)
+    if S.get("cuts"):  # manual inner text boundaries (seconds), from audio dips
+        bounds = [0.0] + list(S["cuts"]) + [T]
     surah_name = IDX[(s, a0)][0]
     ref = f"سورة {surah_name} · {str(a0).translate(AR)}" + ((f" و{str(a1).translate(AR)}" if a1 == a0 + 1 else f" إلى {str(a1).translate(AR)}") if a1 != a0 else "")
     # base overlay: grade gradient + hook + footer
