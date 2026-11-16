@@ -155,8 +155,10 @@ def main(spec):
         v = 0.40 + 0.25 * max(0, (y - H * 0.6) / (H * 0.4)) + 0.2 * max(0, (H * 0.3 - y) / (H * 0.3))
         g.putpixel((0, y), int(255 * min(v, 0.75)))
     base.alpha_composite(Image.merge("RGBA", [Image.new("L", (W, H), 0)] * 3 + [g.resize((W, H))]))
-    draw_block(base, S["hook"], font("IBMPlexSansArabic_700Bold.ttf", 64), 470, 860, lh=1.25, shadow=0,
+    hook_im = Image.new("RGBA", (W, H), (0, 0, 0, 0))  # hook is its own layer so it can animate in
+    draw_block(hook_im, S["hook"], font("IBMPlexSansArabic_700Bold.ttf", 64), 470, 860, lh=1.25, shadow=0,
                box=(44, 30, (255, 255, 255, 38)))
+    hook_im.save(f"{tmp}/hook.png")
     draw_block(base, f"{ref}  |  {rname}", font("IBMPlexSansArabic_500Medium.ttf", 32), 1500, 900, fill=(255, 255, 255, 230), shadow=6)
     draw_block(base, "@آية لمست قلبي", font("IBMPlexSansArabic_700Bold.ttf", 30), 1560, 900, fill=(255, 255, 255, 200), shadow=6)
     base.save(f"{tmp}/base.png")
@@ -178,7 +180,7 @@ def main(spec):
             n = len(clips)
             for j, c in enumerate(clips):
                 cuts.append((f"{BGD}/{c}.mp4", (b - a) / n))
-        X = 0.35
+        X = 0.5  # scene crossfade: calm/premium motion personality (motion/MOTION_RULES.md)
         ins, fcb = "", ""
         for k, (c, d) in enumerate(cuts):
             L = d + (X if k < len(cuts) - 1 else 0.05)
@@ -194,18 +196,27 @@ def main(spec):
         sh(f"ffmpeg -y {ins} -filter_complex \"{fcb}\" -map [{last}] -an -c:v libx264 -preset veryfast -crf 17 -t {T:.2f} {tmp}/bgtrack.mp4")
         bg = f"{tmp}/bgtrack.mp4"
         S["zoom"] = 0
-    inputs = f"-stream_loop -1 -i '{bg}' -i {tmp}/a.wav -loop 1 -t {T:.2f} -i {tmp}/base.png "
+    # Motion rules (motion/MOTION_RULES.md): calm/premium personality, never opacity-only,
+    # entrance = ease-out cubic, exit = ease-in and ~2/3 of the entrance, hook leads, ayah follows (stagger).
+    IN, OUT, RISE_IN, RISE_OUT = 0.45, 0.30, 28, 14
+    inputs = (f"-stream_loop -1 -i '{bg}' -i {tmp}/a.wav -loop 1 -t {T:.2f} -i {tmp}/base.png "
+              f"-loop 1 -t {T:.2f} -i {tmp}/hook.png ")
     fc = (f"[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,fps=30,"
-          
-          f"colorchannelmixer=rr=0.93:gg=0.85:bb=0.76,eq=saturation=0.9:contrast=1.04,setsar=1,format=yuva420p[bg];[bg][2:v]overlay=0:0[v0];")
-    last = "v0"
+          f"colorchannelmixer=rr=0.93:gg=0.85:bb=0.76,eq=saturation=0.9:contrast=1.04,setsar=1,format=yuva420p[bg];[bg][2:v]overlay=0:0[v0];"
+          f"[3:v]format=rgba,fade=in:st=0.05:d=0.6:alpha=1[hk];"
+          f"[v0][hk]overlay=0:'22*pow(1-clip((t-0.05)/0.6,0,1),3)':eval=frame[vh];")
+    last = "vh"
     for i in range(len(segs)):
         a, b = bounds[i], bounds[i + 1]; d = b - a
+        st = 0.2 if i == 0 else 0.0  # first ayah segment enters just after the hook
         inputs += f"-loop 1 -t {d:.2f} -i {tmp}/s{i}.png "
-        k = i + 3
-        fo = f",fade=out:st={d-0.25:.2f}:d=0.25:alpha=1" if i < len(segs) - 1 else ""
-        fc += (f"[{k}:v]format=rgba,fade=in:st=0:d=0.3:alpha=1{fo},setpts=PTS+{a:.2f}/TB[o{i}];"
-               f"[{last}][o{i}]overlay=0:0:enable='between(t,{a:.2f},{b:.2f})'[v{i+1}];")
+        k = i + 4
+        has_out = i < len(segs) - 1
+        fo = f",fade=out:st={d-OUT:.2f}:d={OUT}:alpha=1" if has_out else ""
+        yin = f"{RISE_IN}*pow(1-clip((t-{a+st:.3f})/{IN},0,1),3)"
+        yout = f"-{RISE_OUT}*pow(clip((t-{b-OUT:.3f})/{OUT},0,1),3)" if has_out else ""
+        fc += (f"[{k}:v]format=rgba,fade=in:st={st}:d={IN}:alpha=1{fo},setpts=PTS+{a:.2f}/TB[o{i}];"
+               f"[{last}][o{i}]overlay=0:'{yin}{yout}':eval=frame:enable='between(t,{a:.2f},{b:.2f})'[v{i+1}];")
         last = f"v{i+1}"
     fc += f"[{last}]fade=in:st=0:d=0.25,format=yuv420p[vo]"
     out = S["out"]
