@@ -119,7 +119,8 @@ def main(spec):
     files = [fetch_audio(rid, s, a, tmp) for a in range(a0, a1 + 1)]
     with open(f"{tmp}/l.txt", "w") as fh:
         for p in files: fh.write(f"file '{p}'\n")
-    sh(f"ffmpeg -y -f concat -safe 0 -i {tmp}/l.txt -af 'silenceremove=start_periods=1:start_threshold=-40dB,adelay=150|150,apad=pad_dur=0.8,aresample=44100' -ac 2 {tmp}/a.wav")
+    tail = S.get("tail", 1.8 if S.get("share") else 0.8)  # silent tail so the share line can be read
+    sh(f"ffmpeg -y -f concat -safe 0 -i {tmp}/l.txt -af 'silenceremove=start_periods=1:start_threshold=-40dB,adelay=150|150,apad=pad_dur={tail},aresample=44100' -ac 2 {tmp}/a.wav")
     T = float(sh(f"ffprobe -v error -show_entries format=duration -of csv=p=0 {tmp}/a.wav").stdout)
     # text segments with ayah markers
     segs = []
@@ -136,7 +137,7 @@ def main(spec):
         segs += ss
     # timing: proportional to letters, snapped to silences
     sil = silences(f"{tmp}/a.wav")
-    speech_end = T - 0.8
+    speech_end = T - tail
     L = [letters(x) for x in segs]; tot = sum(L)
     bounds, acc = [0.0], 0
     for l in L[:-1]:
@@ -162,6 +163,11 @@ def main(spec):
     draw_block(base, f"{ref}  |  {rname}", font("IBMPlexSansArabic_500Medium.ttf", 32), 1500, 900, fill=(255, 255, 255, 230), shadow=6)
     draw_block(base, "@آية لمست قلبي", font("IBMPlexSansArabic_700Bold.ttf", 30), 1560, 900, fill=(255, 255, 255, 200), shadow=6)
     base.save(f"{tmp}/base.png")
+    if S.get("share"):  # in-video share line at the end (PLAYBOOK, YouTube review 14 Nov)
+        sh_im = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+        draw_block(sh_im, S["share"], font("IBMPlexSansArabic_700Bold.ttf", 46), 1340, 860, lh=1.2, shadow=0,
+                   box=(36, 22, (0, 0, 0, 110)))
+        sh_im.save(f"{tmp}/share.png")
     fq = font("AmiriQuran.ttf", S.get("ayah_size", 84))
     for i, t in enumerate(segs):
         im = Image.new("RGBA", (W, H), (0, 0, 0, 0))
@@ -218,6 +224,12 @@ def main(spec):
         fc += (f"[{k}:v]format=rgba,fade=in:st={st}:d={IN}:alpha=1{fo},setpts=PTS+{a:.2f}/TB[o{i}];"
                f"[{last}][o{i}]overlay=0:'{yin}{yout}':eval=frame:enable='between(t,{a:.2f},{b:.2f})'[v{i+1}];")
         last = f"v{i+1}"
+    if S.get("share"):
+        k = len(segs) + 4; ss = max(T - tail - 1.0, 0.5)
+        inputs += f"-loop 1 -t {T:.2f} -i {tmp}/share.png "
+        fc += (f"[{k}:v]format=rgba,fade=in:st={ss:.2f}:d={IN}:alpha=1[sh];"
+               f"[{last}][sh]overlay=0:'{RISE_IN}*pow(1-clip((t-{ss:.3f})/{IN},0,1),3)':eval=frame[vsh];")
+        last = "vsh"
     fc += f"[{last}]fade=in:st=0:d=0.25,format=yuv420p[vo]"
     out = S["out"]
     sh(f"ffmpeg -y {inputs} -filter_complex \"{fc}\" -map [vo] -map 1:a -t {T:.2f} "
