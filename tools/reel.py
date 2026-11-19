@@ -119,8 +119,8 @@ def main(spec):
     files = [fetch_audio(rid, s, a, tmp) for a in range(a0, a1 + 1)]
     with open(f"{tmp}/l.txt", "w") as fh:
         for p in files: fh.write(f"file '{p}'\n")
-    tail = S.get("tail", 1.8 if S.get("share") else 0.8)  # silent tail so the share line can be read
-    sh(f"ffmpeg -y -f concat -safe 0 -i {tmp}/l.txt -af 'silenceremove=start_periods=1:start_threshold=-40dB,adelay=150|150,apad=pad_dur={tail},aresample=44100' -ac 2 {tmp}/a.wav")
+    tail = S.get("tail", 0.5)  # Ahmed 19 Nov: no long silence at the end of any reel (trailing silence is trimmed too)
+    sh(f"ffmpeg -y -f concat -safe 0 -i {tmp}/l.txt -af 'silenceremove=start_periods=1:start_threshold=-40dB,areverse,silenceremove=start_periods=1:start_threshold=-45dB,areverse,adelay=150|150,apad=pad_dur={tail},aresample=44100' -ac 2 {tmp}/a.wav")
     T = float(sh(f"ffprobe -v error -show_entries format=duration -of csv=p=0 {tmp}/a.wav").stdout)
     # text segments with ayah markers
     segs = []
@@ -225,7 +225,7 @@ def main(spec):
                f"[{last}][o{i}]overlay=0:'{yin}{yout}':eval=frame:enable='between(t,{a:.2f},{b:.2f})'[v{i+1}];")
         last = f"v{i+1}"
     if S.get("share"):
-        k = len(segs) + 4; ss = max(T - tail - 1.0, 0.5)
+        k = len(segs) + 4; ss = max(T - tail - 2.5, bounds[-2] + 0.6, 0.5)  # shown over the last ayah words, not after them
         inputs += f"-loop 1 -t {T:.2f} -i {tmp}/share.png "
         fc += (f"[{k}:v]format=rgba,fade=in:st={ss:.2f}:d={IN}:alpha=1[sh];"
                f"[{last}][sh]overlay=0:'{RISE_IN}*pow(1-clip((t-{ss:.3f})/{IN},0,1),3)':eval=frame[vsh];")
