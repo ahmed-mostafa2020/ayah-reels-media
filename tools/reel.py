@@ -236,6 +236,19 @@ def main(spec):
         fc += (f"[{k}:v]format=rgba,fade=in:st={ss:.2f}:d={IN}:alpha=1[sh];"
                f"[{last}][sh]overlay=0:'{RISE_IN}*pow(1-clip((t-{ss:.3f})/{IN},0,1),3)':eval=frame[vsh];")
         last = "vsh"
+    for n_i, note in enumerate(S.get("notes", [])):  # timed text cards: {"lines": [...], "from": s, "to": s}
+        nim = Image.new("RGBA", (W, H), (0, 0, 0, 0)); ys = note.get("y", 1290)
+        for j, line in enumerate(note["lines"]):
+            draw_block(nim, line, font("IBMPlexSansArabic_700Bold.ttf" if j == 0 else "IBMPlexSansArabic_500Medium.ttf", 44 if j == 0 else 34),
+                       ys + j * 72, 900, lh=1.2, shadow=0, box=(30, 14, (0, 0, 0, 120)))
+        nim.save(f"{tmp}/note{n_i}.png")
+        k = len(segs) + 4 + (1 if S.get("share") else 0) + n_i
+        a_, b_ = note["from"], min(note["to"], T); d_ = b_ - a_
+        inputs += f"-loop 1 -t {d_:.2f} -i {tmp}/note{n_i}.png "
+        fo = f",fade=out:st={d_-OUT:.2f}:d={OUT}:alpha=1" if b_ < T - 0.05 else ""
+        fc += (f"[{k}:v]format=rgba,fade=in:st=0:d={IN}:alpha=1{fo},setpts=PTS+{a_:.2f}/TB[n{n_i}];"
+               f"[{last}][n{n_i}]overlay=0:'{RISE_IN}*pow(1-clip((t-{a_:.3f})/{IN},0,1),3)':eval=frame:enable='between(t,{a_:.2f},{b_:.2f})'[vn{n_i}];")
+        last = f"vn{n_i}"
     fc += f"[{last}]fade=in:st=0:d=0.25,format=yuv420p[vo]"
     out = S["out"]
     sh(f"ffmpeg -y {inputs} -filter_complex \"{fc}\" -map [vo] -map 1:a -t {T:.2f} "
