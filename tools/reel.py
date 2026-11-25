@@ -165,8 +165,14 @@ def main(spec):
     base.save(f"{tmp}/base.png")
     if S.get("share"):  # in-video share line at the end (PLAYBOOK, YouTube review 14 Nov)
         sh_im = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-        draw_block(sh_im, S["share"], font("IBMPlexSansArabic_700Bold.ttf", 46), 1340, 860, lh=1.2, shadow=0,
-                   box=(36, 22, (0, 0, 0, 110)))
+        if isinstance(S["share"], list):  # several lines (e.g. hadith + source), stacked, first line biggest
+            ys = S.get("share_y", 1290)
+            for j, line in enumerate(S["share"]):
+                draw_block(sh_im, line, font("IBMPlexSansArabic_700Bold.ttf" if j == 0 else "IBMPlexSansArabic_500Medium.ttf", 46 if j == 0 else 34),
+                           ys + j * 70, 900, lh=1.2, shadow=0, box=(30, 14, (0, 0, 0, 120)))
+        else:
+            draw_block(sh_im, S["share"], font("IBMPlexSansArabic_700Bold.ttf", 46), 1340, 860, lh=1.2, shadow=0,
+                       box=(36, 22, (0, 0, 0, 110)))
         sh_im.save(f"{tmp}/share.png")
     fq = font("AmiriQuran.ttf", S.get("ayah_size", 84))
     for i, t in enumerate(segs):
@@ -225,7 +231,7 @@ def main(spec):
                f"[{last}][o{i}]overlay=0:'{yin}{yout}':eval=frame:enable='between(t,{a:.2f},{b:.2f})'[v{i+1}];")
         last = f"v{i+1}"
     if S.get("share"):
-        k = len(segs) + 4; ss = max(T - tail - 2.5, bounds[-2] + 0.6, 0.5)  # shown over the last ayah words, not after them
+        k = len(segs) + 4; ss = S["share_at"] if "share_at" in S else max(T - tail - 2.5, bounds[-2] + 0.6, 0.5)  # shown over the last ayah words, not after them
         inputs += f"-loop 1 -t {T:.2f} -i {tmp}/share.png "
         fc += (f"[{k}:v]format=rgba,fade=in:st={ss:.2f}:d={IN}:alpha=1[sh];"
                f"[{last}][sh]overlay=0:'{RISE_IN}*pow(1-clip((t-{ss:.3f})/{IN},0,1),3)':eval=frame[vsh];")
